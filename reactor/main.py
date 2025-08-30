@@ -12,8 +12,12 @@ from fastapi import Depends, FastAPI, HTTPException, Query, WebSocket, WebSocket
 from loguru import logger
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings
+from dotenv import load_dotenv
 
 import socketio
+
+
+_ = load_dotenv()
 
 
 # --- Configuration ---
@@ -26,7 +30,7 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
-
+print(settings)
 
 # --- Pydantic Models ---
 class ReactorDataModel(BaseModel):
