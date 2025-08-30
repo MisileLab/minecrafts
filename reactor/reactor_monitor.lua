@@ -1,21 +1,19 @@
 -- Reactor Monitoring Script for ComputerCraft
 -- Communicates with FastAPI server via WebSocket
 
+-- Load configuration
+local config = require("config")
+
 -- Check for required components
-if not peripheral.wrap("fissionReactorLogicAdapter_0") then
+if not peripheral.wrap(config.PERIPHERALS.REACTOR) then
   error("Fission reactor not found")
 end
 
--- Configuration
-local SERVER_URL = "ws://localhost:8765/ws/computercraft/1"
-local SECRET_KEY = "supersecretkey" -- IMPORTANT: Change this to match your server's SECRET_KEY
-local UPDATE_INTERVAL = 1 -- seconds
-
 -- Get reactor component
-local reactor = peripheral.wrap("fissionReactorLogicAdapter_0")
+local reactor = peripheral.wrap(config.PERIPHERALS.REACTOR)
 
 -- Connect to WebSocket server
-local full_url = SERVER_URL .. "?secret=" .. SECRET_KEY
+local full_url = config.SERVER_URL .. "?secret=" .. config.SECRET_KEY
 local ws, err = http.websocket(full_url)
 if not ws then
   error("Failed to connect to server: " .. tostring(err))
@@ -38,9 +36,9 @@ local function getReactorData()
 
   -- Calculate alert status
   -- 0 = normal, 1 = caution, 2 = danger
-  if data.temperature > 1000 then
+  if data.temperature > config.ALERT_THRESHOLDS.TEMPERATURE_DANGER then
     data.alert_status = 2
-  elseif data.temperature > 600 or data.coolant_level < 20 then
+  elseif data.temperature > config.ALERT_THRESHOLDS.TEMPERATURE_CAUTION or data.coolant_level < config.ALERT_THRESHOLDS.COOLANT_LOW_WARNING then
     data.alert_status = 1
   else
     data.alert_status = 0
@@ -99,7 +97,7 @@ local function main()
     end
 
     -- Wait for next update
-    sleep(UPDATE_INTERVAL)
+    sleep(config.UPDATE_INTERVAL)
   end
 end
 
