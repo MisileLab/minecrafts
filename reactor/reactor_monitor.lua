@@ -8,13 +8,15 @@ end
 
 -- Configuration
 local SERVER_URL = "ws://localhost:8765/ws/computercraft/1"
+local SECRET_KEY = "supersecretkey" -- IMPORTANT: Change this to match your server's SECRET_KEY
 local UPDATE_INTERVAL = 1 -- seconds
 
 -- Get reactor component
 local reactor = peripheral.wrap("fissionReactorLogicAdapter_0")
 
 -- Connect to WebSocket server
-local ws, err = http.websocket(SERVER_URL)
+local full_url = SERVER_URL .. "?secret=" .. SECRET_KEY
+local ws, err = http.websocket(full_url)
 if not ws then
   error("Failed to connect to server: " .. tostring(err))
 end
@@ -52,11 +54,11 @@ local function sendReactorData()
   local success, data = pcall(getReactorData)
   if success then
     local jsonData = textutils.serializeJSON(data)
-    local ok, err = ws.send(jsonData)
+    local ok, send_err = ws.send(jsonData)
     if not ok then
-      print("Failed to send data: " .. tostring(err))
+      print("Failed to send data: " .. tostring(send_err))
     else
-      print("Data sent: " .. jsonData)
+      print("Data sent successfully")
     end
   else
     print("Error getting reactor data: " .. tostring(data))
@@ -64,13 +66,13 @@ local function sendReactorData()
 end
 
 -- Function to handle incoming commands
-local function handleCommand(command)
-  local success, data = pcall(textutils.unserialiseJSON, command)
+local function handleCommand(command_json)
+  local success, data = pcall(textutils.unserialiseJSON, command_json)
   if success and type(data) == "table" then
-    if data.cmd == "emergency_stop" then
+    if data.command == "emergency_stop" then
       reactor.setEmergencyShutdown(true)
       print("Emergency stop activated")
-    elseif data.cmd == "coolant_speed" and data.value then
+    elseif data.command == "coolant_speed" and data.value then
       reactor.setCoolantSpeed(data.value)
       print("Coolant speed set to " .. data.value)
     end
@@ -107,11 +109,10 @@ local function shutdown()
 end
 
 -- Run main loop with error handling
-local success, err = pcall(main)
+local success, main_err = pcall(main)
 if not success then
-  print("Error: " .. tostring(err))
+  print("Error in main loop: " .. tostring(main_err))
 end
 
 -- Cleanup
 shutdown()
-
