@@ -54,11 +54,14 @@ local function sendReactorData()
   local success, data = pcall(getReactorData)
   if success then
     local jsonData = textutils.serializeJSON(data)
-    local ok, send_err = ws.send(jsonData)
-    if not ok then
-      print("Failed to send data: " .. tostring(send_err))
-    else
+    local send_success, send_err = pcall(function()
+      ws.send(jsonData)
+      return true
+    end)
+    if send_success then
       print("Data sent successfully")
+    else
+      print("Failed to send data: " .. tostring(send_err))
     end
   else
     print("Error getting reactor data: " .. tostring(data))
