@@ -1,8 +1,10 @@
 import asyncio
 import json
 import struct
+from contextlib import asynccontextmanager, suppress
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 import polars as pl
 import uvicorn
@@ -47,11 +49,11 @@ class ControlCommand(BaseModel):
 # --- State Management ---
 class DataManager:
     def __init__(self, log_file: Path):
-        self.reactor_data = ReactorDataModel()
+        self.reactor_data: ReactorDataModel = ReactorDataModel()
         self.data_buffer: list[ReactorDataModel] = []
-        self._lock = asyncio.Lock()
-        self.log_file = log_file
-        self.data_log = self._load_or_initialize_log()
+        self._lock: asyncio.Lock = asyncio.Lock()
+        self.log_file: Path = log_file
+        self.data_log: pl.DataFrame = self._load_or_initialize_log()
 
     def _load_or_initialize_log(self) -> pl.DataFrame:
         """Load existing data log or initialize a new one."""
@@ -101,7 +103,7 @@ class ConnectionManager:
     def __init__(self):
         self.computercraft_connections: dict[str, WebSocket] = {}
         self.esp8266_connected: bool = False
-        self._lock = asyncio.Lock()
+        self._lock: asyncio.Lock = asyncio.Lock()
 
     async def add_computercraft(self, computer_id: str, websocket: WebSocket):
         async with self._lock:
@@ -117,15 +119,6 @@ class ConnectionManager:
             self.esp8266_connected = status
 
 
-# --- FastAPI & SocketIO Setup ---
-app = FastAPI(title="Reactor Monitoring System", version="2.0.0")
-sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins="*")
-combined_app = socketio.ASGIApp(sio, app)
-
-conn_manager = ConnectionManager()
-data_manager = DataManager(log_file=settings.LOG_FILE)
-
-
 # --- Background Task for Data Logging ---
 async def periodic_data_saver(interval: int):
     """Periodically save the data log to disk."""
@@ -134,23 +127,38 @@ async def periodic_data_saver(interval: int):
         await data_manager.save_log_to_disk()
 
 
-@app.on_event("startup")
-async def startup_event():
-    """Start background tasks on application startup."""
-    asyncio.create_task(periodic_data_saver(settings.LOG_INTERVAL_SECONDS))
-
-
 # --- WebSocket Security ---
-async def get_secret_key(secret: str = Query(..., title="Secret Key for WebSocket authentication")):
+async def get_secret_key(secret: str = Query(..., title="Secret Key for WebSocket authentication")): # pyright: ignore[reportCallInDefaultInitializer]
     if secret != settings.SECRET_KEY:
         raise HTTPException(status_code=403, detail="Invalid secret key")
-    return secret
+    return secret  # Return the validated secret
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """Handle application lifespan events."""
+    # Startup
+    task = asyncio.create_task(periodic_data_saver(settings.LOG_INTERVAL_SECONDS))
+    yield
+    # Shutdown
+    _cancelled = task.cancel()
+    with suppress(asyncio.CancelledError):
+        await task
+
+
+# --- FastAPI & SocketIO Setup ---
+app = FastAPI(title="Reactor Monitoring System", version="2.0.0", lifespan=lifespan)
+sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins="*")
+combined_app = socketio.ASGIApp(sio, app)
+
+conn_manager = ConnectionManager()
+data_manager = DataManager(log_file=settings.LOG_FILE)
 
 
 # --- WebSocket Endpoint for ComputerCraft ---
 @app.websocket("/ws/computercraft/{computer_id}")
 async def websocket_endpoint(
-    websocket: WebSocket, computer_id: str, _: str = Depends(get_secret_key)
+    websocket: WebSocket, computer_id: str, _: str = Depends(get_secret_key) # pyright: ignore[reportCallInDefaultInitializer]
 ):
     await websocket.accept()
     await conn_manager.add_computercraft(computer_id, websocket)
@@ -207,7 +215,7 @@ async def send_to_esp8266(data: ReactorDataModel):
 # The @sio.event decorator is not fully recognized by static type checkers,
 # leading to `reportUntypedFunctionDecorator` warnings. We ignore them here.
 @sio.event  # pyright: ignore[reportUntypedFunctionDecorator, reportUnknownMemberType]
-async def connect(sid: str, environ: dict):
+async def connect(sid: str, _environ: dict[str, Any]): # pyright: ignore[reportExplicitAny]
     logger.info(f"ESP8266 connected with sid: {sid}")
     await conn_manager.set_esp8266_connected(True)
 
@@ -219,7 +227,7 @@ async def disconnect(sid: str):
 
 
 @sio.event  # pyright: ignore[reportUntypedFunctionDecorator, reportUnknownMemberType]
-async def control_command(sid: str, data: dict):
+async def control_command(sid: str, data: dict[str, Any]): # pyright: ignore[reportExplicitAny]
     try:
         command = ControlCommand.model_validate(data)
         logger.info(f"Received control command from ESP8266: {command}")
