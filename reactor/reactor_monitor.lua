@@ -50,14 +50,31 @@ connectToServer()
 
 -- Function to get reactor data
 local function getReactorData()
+  -- Check if getTemperature method exists
+  local hasGetTemperature = reactor and reactor.getTemperature and type(reactor.getTemperature) == "function"
+  
+  if not hasGetTemperature then
+    -- If getTemperature doesn't exist, return disassembled status with all values 0
+    return {
+      temperature = 0,
+      fuel_level = 0,
+      coolant_level = 0,
+      waste_level = 0,
+      status = "disassembled",
+      burn_rate = 0,
+      actual_burn_rate = 0,
+      alert_status = 0
+    }
+  end
+  
   local data = {
-    temperature = reactor and reactor.getTemperature() or 0,
-    fuel_level = reactor and ((reactor.getFuel()["amount"] or 0) / (reactor.getFuelCapacity() or 1)) * 100 or 0,
-    coolant_level = reactor and ((reactor.getCoolant()["amount"] or 0) / (reactor.getCoolantCapacity() or 1)) * 100 or 0,
-    waste_level = reactor and ((reactor.getWaste()["amount"] or 0) / (reactor.getWasteCapacity() or 1)) * 100 or 0,
-    status = reactor and reactor.getStatus() or "disassembled",
-    burn_rate = reactor and reactor.getBurnRate() or 0,
-    actual_burn_rate = reactor and reactor.getActualBurnRate() or 0,
+    temperature = reactor.getTemperature(),
+    fuel_level = ((reactor.getFuel()["amount"] or 0) / (reactor.getFuelCapacity() or 1)) * 100,
+    coolant_level = ((reactor.getCoolant()["amount"] or 0) / (reactor.getCoolantCapacity() or 1)) * 100,
+    waste_level = ((reactor.getWaste()["amount"] or 0) / (reactor.getWasteCapacity() or 1)) * 100,
+    status = reactor.getStatus(),
+    burn_rate = reactor.getBurnRate(),
+    actual_burn_rate = reactor.getActualBurnRate(),
     alert_status = 0 -- Will be calculated based on conditions
   }
 
