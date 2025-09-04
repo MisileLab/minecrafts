@@ -16,8 +16,33 @@ local config = {
 
   -- Peripheral names
   PERIPHERALS = {
-    REACTOR = "fissionReactorLogicAdapter_0"
-  }
+    REACTOR = nil -- Will be set dynamically
+  },
+
+  -- Function to find the reactor peripheral with the smallest number
+  findReactorPeripheral = function()
+    local peripherals = peripheral.getNames()
+    local reactorPeripherals = {}
+    
+    -- Find all peripherals that start with "fissionReactorLogicAdapter"
+    for _, name in ipairs(peripherals) do
+      if string.match(name, "^fissionReactorLogicAdapter_") then
+        -- Extract the number from the peripheral name
+        local number = tonumber(string.match(name, "fissionReactorLogicAdapter_(%d+)"))
+        if number then
+          table.insert(reactorPeripherals, {name = name, number = number})
+        end
+      end
+    end
+    
+    -- Sort by number and return the one with the smallest number
+    if #reactorPeripherals > 0 then
+      table.sort(reactorPeripherals, function(a, b) return a.number < b.number end)
+      return reactorPeripherals[1].name
+    end
+    
+    return nil
+  end
 }
 
 return config

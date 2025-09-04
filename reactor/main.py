@@ -39,7 +39,7 @@ class ReactorDataModel(BaseModel):
     fuel_level: float = 0.0
     coolant_level: float = 0.0
     waste_level: float = 0.0
-    status: bool = False
+    status: bool | str = False
     burn_rate: float = 0.0
     actual_burn_rate: float = 0.0
     alert_status: int = 0

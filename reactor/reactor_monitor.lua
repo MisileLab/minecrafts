@@ -4,33 +4,60 @@
 -- Load configuration
 local config = require("config")
 
--- Check for required components
-if not peripheral.wrap(config.PERIPHERALS.REACTOR) then
-  error("Fission reactor not found")
+-- Global variables for reactor and websocket
+local reactor = nil
+local ws = nil
+
+-- Function to find and connect to reactor
+local function connectToReactor()
+  print("Searching for fission reactor...")
+  while not reactor do
+    -- Find the reactor peripheral with the smallest number
+    local reactorName = config.findReactorPeripheral()
+    if reactorName then
+      reactor = peripheral.wrap(reactorName)
+      if reactor then
+        print("Fission reactor found and connected: " .. reactorName)
+      else
+        print("Failed to wrap reactor peripheral: " .. reactorName)
+        sleep(5)
+      end
+    else
+      print("No fission reactor found. Retrying in 5 seconds...")
+      sleep(5)
+    end
+  end
 end
 
--- Get reactor component
-local reactor = peripheral.wrap(config.PERIPHERALS.REACTOR)
-
--- Connect to WebSocket server
-local full_url = config.SERVER_URL .. "?secret=" .. config.SECRET_KEY
-local ws, err = http.websocket(full_url)
-if not ws then
-  error("Failed to connect to server: " .. tostring(err))
+-- Function to connect to WebSocket server
+local function connectToServer()
+  print("Connecting to monitoring server...")
+  while not ws do
+    local full_url = config.SERVER_URL .. "?secret=" .. config.SECRET_KEY
+    ws, err = http.websocket(full_url)
+    if not ws then
+      print("Failed to connect to server: " .. tostring(err) .. ". Retrying in 5 seconds...")
+      sleep(5)
+    else
+      print("Connected to reactor monitoring server")
+    end
+  end
 end
 
-print("Connected to reactor monitoring server")
+-- Initial connections
+connectToReactor()
+connectToServer()
 
 -- Function to get reactor data
 local function getReactorData()
   local data = {
-    temperature = reactor.getTemperature() or 0,
-    fuel_level = ((reactor.getFuel()["amount"] or 0) / (reactor.getFuelCapacity() or 1)) * 100,
-    coolant_level = ((reactor.getCoolant()["amount"] or 0) / (reactor.getCoolantCapacity() or 1)) * 100,
-    waste_level = ((reactor.getWaste()["amount"] or 0) / (reactor.getWasteCapacity() or 1)) * 100,
-    status = reactor.getStatus() or false,
-    burn_rate = reactor.getBurnRate() or 0,
-    actual_burn_rate = reactor.getActualBurnRate() or 0,
+    temperature = reactor and reactor.getTemperature() or 0,
+    fuel_level = reactor and ((reactor.getFuel()["amount"] or 0) / (reactor.getFuelCapacity() or 1)) * 100 or 0,
+    coolant_level = reactor and ((reactor.getCoolant()["amount"] or 0) / (reactor.getCoolantCapacity() or 1)) * 100 or 0,
+    waste_level = reactor and ((reactor.getWaste()["amount"] or 0) / (reactor.getWasteCapacity() or 1)) * 100 or 0,
+    status = reactor and reactor.getStatus() or "disassembled",
+    burn_rate = reactor and reactor.getBurnRate() or 0,
+    actual_burn_rate = reactor and reactor.getActualBurnRate() or 0,
     alert_status = 0 -- Will be calculated based on conditions
   }
 
@@ -49,6 +76,12 @@ end
 
 -- Function to send data to server
 local function sendReactorData()
+  -- Try to reconnect if reactor is not connected
+  if not reactor then
+    print("Reactor disconnected. Attempting to reconnect...")
+    connectToReactor()
+  end
+  
   local success, data = pcall(getReactorData)
   if success then
     local jsonData = textutils.serializeJSON(data)
@@ -56,13 +89,16 @@ local function sendReactorData()
       ws.send(jsonData)
       return true
     end)
-    if send_success then
-      print("Data sent successfully")
-    else
+    if not send_success then
       print("Failed to send data: " .. tostring(send_err))
+      print("WebSocket connection lost. Attempting to reconnect...")
+      ws = nil
+      connectToServer()
     end
   else
     print("Error getting reactor data: " .. tostring(data))
+    -- Reactor might have disconnected, try to reconnect
+    reactor = nil
   end
 end
 
@@ -70,6 +106,12 @@ end
 local function handleCommand(command_json)
   local success, data = pcall(textutils.unserialiseJSON, command_json)
   if success and type(data) == "table" then
+    -- Check if reactor is still connected before executing commands
+    if not reactor then
+      print("Cannot execute command: Reactor not connected")
+      return
+    end
+    
     if data.command == "emergency_stop" then
       reactor.setEmergencyShutdown(true)
       print("Emergency stop activated")
@@ -87,13 +129,21 @@ local function main()
   print("Starting reactor monitoring...")
 
   while true do
+    -- Check if WebSocket is still connected
+    if not ws then
+      print("WebSocket disconnected. Attempting to reconnect...")
+      connectToServer()
+    end
+
     -- Send reactor data
     sendReactorData()
 
     -- Check for incoming commands
-    local response = ws.receive(0.1) -- Non-blocking receive
-    if response then
-      handleCommand(response)
+    if ws then
+      local response = ws.receive(0.1) -- Non-blocking receive
+      if response then
+        handleCommand(response)
+      end
     end
 
     -- Wait for next update
