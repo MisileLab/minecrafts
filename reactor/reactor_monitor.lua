@@ -50,10 +50,8 @@ connectToServer()
 
 -- Function to get reactor data
 local function getReactorData()
-  -- Check if getTemperature method exists
-  local hasGetTemperature = reactor and reactor.getTemperature and type(reactor.getTemperature) == "function"
   
-  if not hasGetTemperature then
+  if not reactor.isFormed() then
     -- If getTemperature doesn't exist, return disassembled status with all values 0
     return {
       temperature = 0,
