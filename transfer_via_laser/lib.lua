@@ -8,3 +8,5 @@ function NumberToBits(num)
   end
   return table.concat(bits)
 end
+
+return {NumberToBits = NumberToBits}
