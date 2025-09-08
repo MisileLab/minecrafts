@@ -1,9 +1,7 @@
-function NumberToBits(num)
-  if num == 0 then return "0" end
+local function NumberToBits(num)
   local bits = {}
-  while num > 0 do
-      table.insert(bits, 1, tostring(num % 2))
-      num = math.floor(num / 2)
+  for i = 7, 0, -1 do
+    bits[8-i] = tostring(math.floor(num / 2^i) % 2)
   end
   return bits
 end
