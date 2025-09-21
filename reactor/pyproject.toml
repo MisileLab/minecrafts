@@ -5,7 +5,7 @@ description = "Reactor monitoring and control system"
 readme = "README.md"
 requires-python = ">=3.13.6"
 dependencies = [
-  "fastapi[standard]==0.116.1",
+  "fastapi[standard]==0.117.1",
   "gel==3.1.0",
   "loguru==0.7.3",
   "polars==1.32.3",
