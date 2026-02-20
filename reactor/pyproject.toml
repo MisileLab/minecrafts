@@ -12,6 +12,6 @@ dependencies = [
   "pydantic-settings>=2.10.1",
   "python-engineio==4.12.3",
   "python-socketio==5.16.1",
-  "uvicorn==0.38.0",
+  "uvicorn==0.41.0",
   "websockets==16.0",
 ]
