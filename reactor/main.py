@@ -8,7 +8,14 @@ from typing import Any
 
 import polars as pl
 import uvicorn
-from fastapi import Depends, FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi import (
+    Depends,
+    FastAPI,
+    HTTPException,
+    Query,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from loguru import logger
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings
@@ -31,6 +38,7 @@ class Settings(BaseSettings):
 
 settings = Settings()
 print(settings)
+
 
 # --- Pydantic Models ---
 class ReactorDataModel(BaseModel):
@@ -132,7 +140,9 @@ async def periodic_data_saver(interval: int):
 
 
 # --- WebSocket Security ---
-async def get_secret_key(secret: str = Query(..., title="Secret Key for WebSocket authentication")): # pyright: ignore[reportCallInDefaultInitializer]
+async def get_secret_key(
+    secret: str = Query(..., title="Secret Key for WebSocket authentication"),
+):  # pyright: ignore[reportCallInDefaultInitializer]
     if secret != settings.SECRET_KEY:
         raise HTTPException(status_code=403, detail="Invalid secret key")
     return secret  # Return the validated secret
@@ -162,7 +172,9 @@ data_manager = DataManager(log_file=settings.LOG_FILE)
 # --- WebSocket Endpoint for ComputerCraft ---
 @app.websocket("/ws/computercraft/{computer_id}")
 async def websocket_endpoint(
-    websocket: WebSocket, computer_id: str, _: str = Depends(get_secret_key) # pyright: ignore[reportCallInDefaultInitializer]
+    websocket: WebSocket,
+    computer_id: str,
+    _: str = Depends(get_secret_key),  # pyright: ignore[reportCallInDefaultInitializer]
 ):
     await websocket.accept()
     await conn_manager.add_computercraft(computer_id, websocket)
@@ -196,15 +208,15 @@ async def send_to_esp8266(data: ReactorDataModel):
     try:
         # Format: [Header:1byte][Temp:2B][Fuel:2B][Coolant:2B][Waste:2B][Status:1B][Alert:1B][Checksum:1B]
         packet = struct.pack(
-            "!BHHHHBB",
+            "!BHHHHBBB",
             0xAA,  # Header
             min(int(data.temperature * 10), 65535),
             min(int(data.fuel_level * 10), 65535),
             min(int(data.coolant_level * 10), 65535),
             min(int(data.waste_level * 10), 65535),
-            1 if data.status else 0,
+            1 if data.status is True else 0,
             data.alert_status,
-            0x55,  # Simplified checksum
+            0x55,  # Checksum
         )
         # The python-socketio library has limited type hints for its dynamic event system,
         # so we use pyright: ignore to suppress type checker warnings for sio.emit.
@@ -219,7 +231,7 @@ async def send_to_esp8266(data: ReactorDataModel):
 # The @sio.event decorator is not fully recognized by static type checkers,
 # leading to `reportUntypedFunctionDecorator` warnings. We ignore them here.
 @sio.event  # pyright: ignore[reportUntypedFunctionDecorator, reportUnknownMemberType]
-async def connect(sid: str, _environ: dict[str, Any]): # pyright: ignore[reportExplicitAny]
+async def connect(sid: str, _environ: dict[str, Any]):  # pyright: ignore[reportExplicitAny]
     logger.info(f"ESP8266 connected with sid: {sid}")
     await conn_manager.set_esp8266_connected(True)
 
@@ -231,7 +243,7 @@ async def disconnect(sid: str):
 
 
 @sio.event  # pyright: ignore[reportUntypedFunctionDecorator, reportUnknownMemberType]
-async def control_command(sid: str, data: dict[str, Any]): # pyright: ignore[reportExplicitAny]
+async def control_command(sid: str, data: dict[str, Any]):  # pyright: ignore[reportExplicitAny]
     try:
         command = ControlCommand.model_validate(data)
         logger.info(f"Received control command from ESP8266: {command}")
@@ -241,7 +253,9 @@ async def control_command(sid: str, data: dict[str, Any]): # pyright: ignore[rep
             try:
                 await websocket.send_text(command_data)
             except Exception as e:
-                logger.error(f"Failed to send command to ComputerCraft {computer_id}: {e}")
+                logger.error(
+                    f"Failed to send command to ComputerCraft {computer_id}: {e}"
+                )
     except Exception as e:
         logger.error(f"Invalid control command from {sid}: {data}, error: {e}")
 
@@ -251,7 +265,9 @@ async def control_command(sid: str, data: dict[str, Any]): # pyright: ignore[rep
 async def get_status():
     """Get current system status."""
     return {
-        "computercraft_connections": list(conn_manager.computercraft_connections.keys()),
+        "computercraft_connections": list(
+            conn_manager.computercraft_connections.keys()
+        ),
         "esp8266_connected": conn_manager.esp8266_connected,
         "reactor_data": data_manager.reactor_data,
     }
