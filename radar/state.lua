@@ -1,0 +1,52 @@
+local state = {}
+
+local sweepData = {}
+local targets = {}
+
+function state.init()
+  sweepData = {}
+  targets = {}
+end
+
+function state.addPoint(point)
+  if not point or not point.hit then
+    return
+  end
+  
+  table.insert(sweepData, point)
+  
+  local angleKey = math.floor(point.angle)
+  targets[angleKey] = {
+    x = point.x,
+    z = point.z,
+    distance = point.distance,
+    angle = point.angle,
+    tick = os.clock()
+  }
+end
+
+function state.getTargets()
+  return targets
+end
+
+function state.getSweepData()
+  return sweepData
+end
+
+function state.clearSweep()
+  sweepData = {}
+end
+
+function state.getClosestDistance()
+  local minDist = nil
+  for _, target in pairs(targets) do
+    if target.distance then
+      if minDist == nil or target.distance < minDist then
+        minDist = target.distance
+      end
+    end
+  end
+  return minDist
+end
+
+return state

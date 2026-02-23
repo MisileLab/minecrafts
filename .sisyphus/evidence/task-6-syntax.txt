@@ -1,0 +1,2 @@
+Exit: 0
+luac -p radar/startup.lua: Exit 0
