@@ -46,8 +46,14 @@ function scanner.getYaw()
     return 0
   end
 
-  local siny = 2 * (q.w * q.y - q.z * q.x)
-  local cosy = 1 - 2 * (q.y * q.y + q.z * q.z)
+  -- Handle both {x,y,z,w} and {1,2,3,4} indexed formats
+  local x = q.x or q[1] or 0
+  local y = q.y or q[2] or 0
+  local z = q.z or q[3] or 0
+  local w = q.w or q[4] or 0
+
+  local siny = 2 * (w * y - z * x)
+  local cosy = 1 - 2 * (y * y + z * z)
   local yaw = math.deg(math.atan2(siny, cosy))
 
   if yaw < 0 then
