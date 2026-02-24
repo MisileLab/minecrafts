@@ -28,6 +28,7 @@ local function main()
     local point = scanner.readPoint()
 
     if point.hit then
+      print(string.format("[DETECT] angle=%d° dist=%.1f x=%.1f z=%.1f", math.floor(point.angle), point.distance, point.x, point.z))
       state.addPoint(point)
     end
 
