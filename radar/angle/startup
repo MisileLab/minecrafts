@@ -1,0 +1,22 @@
+local config = require("config")
+local scanner = require("scanner")
+local transmitter = require("transmitter")
+
+local function init()
+  transmitter.init(config)
+end
+
+local function main()
+  init()
+
+  while true do
+    local angle = scanner.getYaw()
+    transmitter.sendAngle(angle)
+    os.sleep(config.REFRESH_RATE)
+  end
+end
+
+local ok, err = pcall(main)
+if not ok then
+  print("Angle transmitter error: " .. tostring(err))
+end

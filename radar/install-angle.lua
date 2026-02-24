@@ -1,15 +1,8 @@
--- Radar Installer / Updater
--- Downloads radar files from GitHub and keeps them updated
--- Run: install.lua [update]
-
-local GITHUB_RAW = "https://raw.githubusercontent.com/MisileLab/minecrafts/main/radar/receiver"
+local GITHUB_RAW = "https://raw.githubusercontent.com/MisileLab/minecrafts/main/radar/angle"
 local FILES = {
   "config",
-  "receiver",
   "scanner",
-  "state",
-  "ui",
-  "alarm",
+  "transmitter",
   "startup",
 }
 
@@ -38,17 +31,15 @@ local function download(url, path)
 end
 
 local function install()
-  print("=== Radar Receiver Installer ===")
-  print("Downloads radar receiver for fixed platform")
-print("")
-  print("Downloading from GitHub...")
+  print("=== Angle Transmitter Installer ===")
+  print("Downloads angle transmitter for rotating platform")
   print("")
 
   local success = 0
   local failed = 0
 
   for _, name in ipairs(FILES) do
-    local url = GITHUB_RAW .. "/" .. name .. ".lua"
+    local url = GITHUB_RAW .. "/" .. name
     local path = name
     local ok, err = download(url, path)
 
@@ -66,23 +57,18 @@ print("")
 
   if failed == 0 then
     print("")
-    print("Place this computer at fixed location.")
-    print("Connect: Ender Modem + Optical Sensor + Monitor (optional)")
-    print("Run 'startup' to start receiving angles and scanning.")
+    print("Place this computer on Phys Bearing rotating platform.")
+    print("Connect Ender Modem to '" .. "back" .. "' (or edit config)")
+    print("Run 'startup' to begin transmitting angles.")
   end
 
   return failed == 0
 end
 
-local function update()
-  print("=== Radar Updater ===")
-  print("Checking for updates...")
-  return install()
-end
-
 local args = {...}
 if args[1] == "update" then
-  update()
+  print("=== Angle Updater ===")
+  install()
 else
   install()
 end

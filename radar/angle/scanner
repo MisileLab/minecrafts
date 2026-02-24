@@ -1,0 +1,29 @@
+local scanner = {}
+
+function scanner.getYaw()
+  if not ship or not ship.getQuaternion then
+    return 0
+  end
+
+  local ok, q = pcall(ship.getQuaternion)
+  if not ok or not q then
+    return 0
+  end
+
+  local x = q.x or q[1] or 0
+  local y = q.y or q[2] or 0
+  local z = q.z or q[3] or 0
+  local w = q.w or q[4] or 0
+
+  local siny = 2 * (w * y - z * x)
+  local cosy = 1 - 2 * (y * y + z * z)
+  local yaw = math.deg(math.atan2(siny, cosy))
+
+  if yaw < 0 then
+    yaw = yaw + 360
+  end
+
+  return yaw
+end
+
+return scanner

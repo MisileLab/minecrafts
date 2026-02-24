@@ -1,0 +1,7 @@
+local config = {
+  CHANNEL = 100,
+  REFRESH_RATE = 0.05,
+  MODEM_SIDE = "back",
+}
+
+return config

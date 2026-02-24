@@ -1,0 +1,23 @@
+local alarm = {}
+local config
+
+function alarm.init(cfg)
+  config = cfg
+end
+
+function alarm.check(closestDistance, alarmRadius)
+  if closestDistance and closestDistance <= alarmRadius then
+    redstone.setOutput(config.ALARM_SIDE, true)
+    return true
+  else
+    redstone.setOutput(config.ALARM_SIDE, false)
+    return false
+  end
+end
+
+function alarm.reset()
+  if not config then return end
+  redstone.setOutput(config.ALARM_SIDE, false)
+end
+
+return alarm

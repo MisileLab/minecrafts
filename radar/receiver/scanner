@@ -1,0 +1,42 @@
+local scanner = {}
+local sensor = nil
+local cfg = nil
+
+function scanner.init(config, angleReceiver)
+  cfg = config
+  receiver = angleReceiver
+
+  print("Searching for optical sensor...")
+  while not sensor do
+    sensor = config.findPeripheral("optical_sensor")
+    if sensor then
+      sensor.setMaxDistance(config.SCAN_RANGE)
+      print("Optical sensor found. Max distance set to " .. config.SCAN_RANGE)
+    else
+      print("No optical sensor found. Retrying in 5 seconds...")
+      sleep(5)
+    end
+  end
+end
+
+function scanner.readPoint()
+  local angle = receiver.getAngle()
+
+  local ok, distance = pcall(sensor.getDistance)
+  if not ok then
+    return { angle = angle, distance = cfg.SCAN_RANGE, hit = false, x = 0, z = 0 }
+  end
+
+  local hit = (distance < cfg.SCAN_RANGE and distance > cfg.MIN_DISTANCE)
+
+  local x, z = 0, 0
+  if hit and distance > cfg.MIN_DISTANCE then
+    local rad = math.rad(angle)
+    x = distance * math.cos(rad)
+    z = distance * math.sin(rad)
+  end
+
+  return { angle = angle, distance = distance, hit = hit, x = x, z = z }
+end
+
+return scanner

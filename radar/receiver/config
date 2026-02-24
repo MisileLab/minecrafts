@@ -1,0 +1,19 @@
+local config = {
+  SCAN_RANGE = 128,
+  MIN_DISTANCE = 5,
+  REFRESH_RATE = 0.05,
+  ALARM_RADIUS = 50,
+  ALARM_SIDE = "top",
+  MONITOR_SCALE = 0.5,
+  CHANNEL = 100,
+  MODEM_SIDE = nil,
+  PERIPHERALS = {
+    sensor = nil,
+    monitor = nil
+  },
+  findPeripheral = function(type)
+    return peripheral.find(type)
+  end
+}
+
+return config

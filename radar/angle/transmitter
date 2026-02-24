@@ -1,0 +1,27 @@
+local transmitter = {}
+local modem = nil
+local channel = nil
+
+function transmitter.init(config)
+  channel = config.CHANNEL
+
+  if config.MODEM_SIDE then
+    modem = peripheral.wrap(config.MODEM_SIDE)
+  else
+    modem = peripheral.find("modem")
+  end
+
+  if not modem then
+    error("No modem found")
+  end
+
+  modem.open(channel)
+  print("Transmitter ready on channel " .. channel)
+end
+
+function transmitter.sendAngle(angle)
+  if not modem then return end
+  modem.transmit(channel, channel, angle)
+end
+
+return transmitter

@@ -1,0 +1,36 @@
+local receiver = {}
+local modem = nil
+local channel = nil
+local currentAngle = 0
+
+function receiver.init(config)
+  channel = config.CHANNEL
+
+  if config.MODEM_SIDE then
+    modem = peripheral.wrap(config.MODEM_SIDE)
+  else
+    modem = peripheral.find("modem")
+  end
+
+  if not modem then
+    error("No modem found")
+  end
+
+  modem.open(channel)
+  print("Receiver listening on channel " .. channel)
+end
+
+function receiver.getAngle()
+  local event, side, replyChannel, message, distance
+  repeat
+    event, side, replyChannel, message, distance = os.pullEvent("modem_message")
+  until replyChannel == channel
+
+  if type(message) == "number" then
+    currentAngle = message
+  end
+
+  return currentAngle
+end
+
+return receiver
