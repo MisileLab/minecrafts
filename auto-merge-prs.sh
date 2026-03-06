@@ -109,7 +109,7 @@ echo "$prs_json" | jq -c '.[]' | while read -r pr; do
   echo "  State: $pr_merge_state"
 
   case "$pr_merge_state" in
-    CLEAN|MERGEABLE|UNSTABLE)
+    CLEAN|MERGEABLE|UNSTABLE|UNKNOWN)
       if [[ "$DRY_RUN" == "true" ]]; then
         echo -e "  ${GREEN}[DRY RUN] Would merge${NC}"
         continue
@@ -143,7 +143,7 @@ echo "$prs_json" | jq -c '.[]' | while read -r pr; do
       ((SKIPPED++)) || true
       ;;
 
-    UNKNOWN|BLOCKED|BEHIND)
+    BLOCKED|BEHIND)
       echo -e "  ${YELLOW}⚠ Status: $pr_merge_state - skipping${NC}"
       ((SKIPPED++)) || true
       ;;
